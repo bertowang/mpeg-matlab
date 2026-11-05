@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mpeg-matlab 图解入门 · 经典 MPEG 混合编码链路</title>
+<style>
+:root{
+  --blue:#2c5aa0; --blue-l:#e8f0fb; --orange:#d9772f; --orange-l:#fdf0e4;
+  --green:#2f8f6b; --green-l:#e7f5ee; --gray:#8a94a6; --gray-l:#f0f2f6;
+  --red:#bb4b48; --red-l:#fbeceb; --ink:#1f2733; --muted:#5c6779;
+  --line:#dfe5ee; --bg:#f5f7fb; --card:#fff;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB","Source Han Sans SC",system-ui,sans-serif;
+  font-size:16px;line-height:1.85}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+code{background:#eef2f8;color:#24406e;padding:1px 5px;border-radius:4px;
+  font-family:Consolas,"Courier New",monospace;font-size:.9em}
+pre{background:#1e2735;color:#e8edf5;padding:14px 18px;border-radius:8px;overflow-x:auto;
+  font-family:Consolas,"Courier New",monospace;font-size:13px;line-height:1.7}
+pre code{background:none;color:inherit;padding:0}
+.hero{background:linear-gradient(125deg,#22467f,#2c5aa0 55%,#3f7bbf);color:#fff;padding:46px 24px 38px}
+.hero .inner{max-width:1180px;margin:0 auto}
+.hero .kicker{font-size:13px;letter-spacing:2px;opacity:.8;margin:0 0 10px}
+.hero h1{margin:0 0 12px;font-size:34px;line-height:1.3}
+.hero p.sub{margin:0 0 20px;font-size:17px;opacity:.93;max-width:820px}
+.tags{display:flex;flex-wrap:wrap;gap:10px}
+.tag{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.32);
+  padding:5px 13px;border-radius:20px;font-size:13px}
+.layout{max-width:1180px;margin:0 auto;padding:28px 20px 70px;display:grid;
+  grid-template-columns:236px minmax(0,1fr);gap:28px;align-items:start}
+.toc{position:sticky;top:20px;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;padding:18px 16px;max-height:calc(100vh - 40px);overflow-y:auto}
+.toc h3{margin:0 0 10px;font-size:14px;color:var(--muted);letter-spacing:1px}
+.toc ol{margin:0;padding-left:22px;font-size:13.5px}
+.toc li{margin:6px 0}
+.toc a{color:#40506a}
+main{min-width:0}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:28px 32px 32px;margin-bottom:22px;box-shadow:0 2px 10px rgba(30,50,90,.04)}
+h2{margin:0 0 18px;font-size:23px;color:var(--blue);display:flex;align-items:center;gap:12px;
+  padding-bottom:12px;border-bottom:2px solid var(--blue-l)}
+.num{display:inline-flex;align-items:center;justify-content:center;flex:0 0 38px;height:38px;
+  background:var(--blue);color:#fff;border-radius:10px;font-size:17px}
+h3{font-size:18px;margin:26px 0 10px;color:#243a5e;border-left:4px solid var(--orange);padding-left:10px}
+h4{font-size:15.5px;margin:18px 0 6px;color:#33445e}
+p{margin:10px 0}
+ul,ol{padding-left:24px;margin:10px 0}
+li{margin:6px 0}
+.lead{font-size:16.5px;color:#33445e;background:var(--blue-l);border-radius:8px;
+  padding:12px 16px;border-left:4px solid var(--blue)}
+.goal{font-size:14px;color:var(--muted);margin:0 0 14px}
+.box{border-radius:8px;padding:12px 16px;margin:16px 0;font-size:14.5px}
+.box .t{font-weight:700;display:block;margin-bottom:4px}
+.note{background:var(--blue-l);border-left:4px solid var(--blue)}
+.warn{background:var(--red-l);border-left:4px solid var(--red)}
+.tip{background:var(--green-l);border-left:4px solid var(--green)}
+.pit{background:var(--orange-l);border-left:4px solid var(--orange)}
+figure.fig{margin:22px 0;background:#fbfcfe;border:1px solid var(--line);
+  border-radius:10px;padding:16px 14px 10px;text-align:center}
+figure.fig svg{width:100%;height:auto;max-width:900px}
+figcaption{font-size:13.5px;color:var(--muted);margin-top:8px;text-align:center}
+svg text{font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14.5px}
+th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+th{background:var(--blue-l);color:#24406e;font-weight:600}
+tr:nth-child(even) td{background:#fafbfe}
+details{background:#fbfcfe;border:1px solid var(--line);border-radius:8px;
+  padding:10px 16px;margin:10px 0}
+summary{cursor:pointer;font-weight:600;color:#2a4a7c}
+details p,details ul{margin:8px 0 4px;font-size:14.5px}
+.path{font-size:13px;color:var(--muted);background:#f2f5fa;border-radius:6px;
+  padding:6px 10px;display:inline-block;margin:4px 0}
+.step{display:flex;gap:14px;margin:14px 0;align-items:flex-start}
+.step .b{flex:0 0 30px;height:30px;background:var(--orange);color:#fff;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+.step .c{flex:1}
+.step .c b{color:#243a5e}
+.kmap{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:16px 0}
+.kcard{border:1px solid var(--line);border-radius:9px;padding:12px 14px;background:#fbfcfe}
+.kcard b{display:block;color:var(--blue);margin-bottom:4px;font-size:14.5px}
+.kcard span{font-size:13.5px;color:var(--muted)}
+footer{text-align:center;color:var(--muted);font-size:13px;padding:8px 20px 40px}
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr;padding:16px 12px 50px}
+  .toc{position:static;max-height:none}
+  section{padding:20px 18px 24px}
+  .hero h1{font-size:26px}
+}
+@media print{.toc{display:none}.layout{grid-template-columns:1fr}section{break-inside:avoid;box-shadow:none}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <marker id="arB" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="#2c5aa0"/></marker>
+  <marker id="arO" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="#d9772f"/></marker>
+  <marker id="arG" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="#2f8f6b"/></marker>
+  <marker id="arN" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="#8a94a6"/></marker>
+</defs></svg>
+
+<header class="hero">
+ <div class="inner">
+  <p class="kicker">MATLAB 视频编码 · 图解入门</p>
+  <h1>从一帧图像到一段 GOP：读懂 mpeg-matlab</h1>
+  <p class="sub">用 10 章、10 张图，把「I/P/B 帧 → 运动估计 → 运动补偿 → DCT 量化 → 解码重建」这条经典混合编码链路讲清楚。不需要任何编码标准基础。</p>
+  <div class="tags">
+   <span class="tag">难度：入门</span><span class="tag">预备：矩阵与图像基础</span>
+   <span class="tag">建议学时：2～3 小时</span><span class="tag">配套：main44.m</span>
+   <span class="tag">离线可读 · 内嵌矢量图</span>
+  </div>
+ </div>
+</header>
+
+<div class="layout">
+ <nav class="toc" aria-label="目录">
+  <h3>章节目录</h3>
+  <ol>
+   <li><a href="#c0">读前须知：这是什么</a></li>
+   <li><a href="#c1">视频为什么能压缩</a></li>
+   <li><a href="#c2">全局鸟瞰：一条流水线</a></li>
+   <li><a href="#c3">GOP 与三种帧</a></li>
+   <li><a href="#c4">I 帧：DCT 与量化</a></li>
+   <li><a href="#c5">运动估计：找那一块</a></li>
+   <li><a href="#c6">运动补偿与残差</a></li>
+   <li><a href="#c7">B 帧：借前还是借后</a></li>
+   <li><a href="#c8">解码器与误差漂移</a></li>
+   <li><a href="#c9">熵编码的空座位</a></li>
+   <li><a href="#c10">知识地图与自测</a></li>
+   <li><a href="#c11">动手运行与排错</a></li>
+   <li><a href="#c12">与相邻工程的分工</a></li>
+   <li><a href="#c13">附录：函数速查</a></li>
+  </ol>
+ </nav>
+
+<main>
+
+<!-- ============ 0 ============ -->
+<section id="c0">
+ <h2><span class="num">0</span>读前须知：这个工程在做什么</h2>
+ <p class="goal">阅读本章后，你应能说清「本工程的输出到底是什么」。</p>
+ <p class="lead">本工程用 MATLAB 演示经典 MPEG-1/2 式混合编码的<b>原理链路</b>：读一段 AVI，按 10 帧一组的 GOP 处理，对每帧做预测、变换、量化，再本地解码重建，最后把重建帧写成新的 AVI。它让你<b>看见</b>每一步的中间结果，而不是得到一个可播放的压缩文件。</p>
+
+ <figure class="fig">
+  <svg viewBox="0 0 880 172" role="img" aria-label="本工程的输入与输出">
+   <rect x="20" y="42" width="150" height="70" rx="9" fill="#e8f0fb" stroke="#2c5aa0" stroke-width="2"/>
+   <text x="95" y="70" text-anchor="middle" font-size="15" font-weight="700" fill="#24406e">news.avi</text>
+   <text x="95" y="92" text-anchor="middle" font-size="12" fill="#5c6779">原始视频帧</text>
+   <line x1="175" y1="77" x2="265" y2="77" stroke="#2c5aa0" stroke-width="2" marker-end="url(#arB)"/>
+   <rect x="270" y="42" width="200" height="70" rx="9" fill="#fff" stroke="#2c5aa0" stroke-width="2"/>
+   <text x="370" y="70" text-anchor="middle" font-size="15" font-weight="700" fill="#24406e">main44.m</text>
+   <text x="370" y="92" text-anchor="middle" font-size="12" fill="#5c6779">编码 → 本地解码 → 重建</text>
+   <line x1="475" y1="77" x2="565" y2="77" stroke="#2f8f6b" stroke-width="2" marker-end="url(#arG)"/>
+   <rect x="570" y="42" width="150" height="70" rx="9" fill="#e7f5ee" stroke="#2f8f6b" stroke-width="2"/>
+   <text x="645" y="70" text-anchor="middle" font-size="15" font-weight="700" fill="#206a4e">2.avi</text>
+   <text x="645" y="92" text-anchor="middle" font-size="12" fill="#5c6779">重建后的视频</text>
+   <rect x="740" y="42" width="120" height="70" rx="9" fill="#f0f2f6" stroke="#8a94a6" stroke-width="2" stroke-dasharray="5 4"/>
+   <text x="800" y="70" text-anchor="middle" font-size="14" font-weight="700" fill="#6b7486">没有</text>
+   <text x="800" y="92" text-anchor="middle" font-size="12" fill="#6b7486">.mpg / 码流</text>
+   <text x="440" y="146" text-anchor="middle" font-size="13" fill="#bb4b48">关键：量化后的系数只存在内存变量 JQ 中，从未写成压缩比特流</text>
+  </svg>
+  <figcaption>图 0-1　工程的输入、处理与输出。虚线框是它「没有」的东西。</figcaption>
+ </figure>
+
+ <div class="box warn"><span class="t">最容易产生的误解</span>
+ 看到 <code>decoder.m</code> 里的 MPEG 标准 Huffman 表，就以为这是一套完整编解码器。实际上这些表只被当作参数层层传递、从未被解析；<code>ZigZag.m</code>、<code>dezigzag.m</code>、<code>chkcategory.m</code>、<code>makeLayers.m</code> 全库没有调用点。第 9 章会专门讲这个「空座位」。
+ </div>
+
+ <div class="box tip"><span class="t">配套文档</span>
+ 工程说明、文件清单、运行方法与已知代码债见同目录 <code>README.md</code>；本教程只讲原理与阅读顺序。
+ </div>
+</section>
+
+<!-- ============ 1 ============ -->
+<section id="c1">
+ <h2><span class="num">1</span>先修：视频为什么能压缩</h2>
+ <p class="goal">阅读本章后，你应能用「冗余」二字解释 I/P/B 帧存在的理由。</p>
+
+ <h3>两种冗余</h3>
+ <p>把视频想成一本翻页动画书：相邻两页通常只挪动了一点点，而单页内部大片区域颜色相近。于是有两类可去掉的重复信息：</p>
+ <ul>
+  <li><b>时间冗余</b>：第 <i>n</i> 帧和第 <i>n−1</i> 帧很像 → 不必重传整帧，只传「哪一块从哪儿搬来」和「搬来之后还差多少」。</li>
+  <li><b>空间冗余</b>：一帧内相邻像素值接近 → 变换到频域后，能量集中在少数低频系数上，高频系数可以大胆丢掉。</li>
+ </ul>
+
+ <figure class="fig">
+  <svg viewBox="0 0 880 250" role="img" aria-label="时间冗余与空间冗余示意">
+   <text x="20" y="26" font-size="14" font-weight="700" fill="#2c5aa0">时间冗余：相邻帧几乎是同一幅画</text>
+   <g>
+    <rect x="30" y="42" width="130" height="100" rx="6" fill="#eef3fa" stroke="#9db4d4"/>
+    <rect x="62" y="72" width="34" height="34" rx="4" fill="#d9772f"/>
+    <text x="95" y="160" text-anchor="middle" font-size="12" fill="#5c6779">第 n−1 帧</text>
+   </g>
+   <g>
+    <rect x="200" y="42" width="130" height="100" rx="6" fill="#eef3fa" stroke="#9db4d4"/>
+    <rect x="76" y="72" width="34" height="34" rx="4" fill="#d9772f"/>
+    <text x="265" y="160" text-anchor="middle" font-size="12" fill="#5c6779">第 n 帧</text>
+   </g>
+   <line x1="112" y1="60" x2="262" y2="60" stroke="#d9772f" stroke-width="2" marker-end="url(#arO)"/>
+   <text x="187" y="52" text-anchor="middle" font-size="12" fill="#d9772f">同一物体移动了 14 像素</text>
+   <text x="370" y="76" font-size="14" fill="#33445e">不必传第 n 帧的全部像素，</text>
+   <text x="370" y="102" font-size="14" fill="#33445e">只需传「往右 14 像素」这个</text>
+   <text x="370" y="128" font-size="14" font-weight="700" fill="#2c5aa0">运动矢量 MV</text>
+
+   <line x1="20" y1="180" x2="860" y2="180" stroke="#dfe5ee"/>
+   <text x="20" y="208" font-size="14" font-weight="700" fill="#2c5aa0">空间冗余：一个 8×8 块内的灰度变化通常很平缓</text>
+   <g transform="translate(640,190)">
+    <rect x="0" y="0" width="112" height="14" rx="3" fill="#dbe6f5"/>
+    <rect x="0" y="14" width="112" height="14" fill="#cddcf0"/>
+    <rect x="0" y="28" width="112" height="14" fill="#bcd0ea"/>
+    <text x="130" y="24" font-size="12" fill="#5c6779">相邻像素相近</text>
+   </g>
+   <text x="370" y="216" font-size="14" fill="#33445e">→ 变换后只需保留少数低频系数</text>
+   <text x="370" y="240" font-size="14" fill="#33445e">→ 这就是第 4 章的 DCT 与量化</text>
+  </svg>
+  <figcaption>图 1-1　时间冗余催生「帧间预测」，空间冗余催生「变换编码」。</figcaption>
+ </figure>
+
+ <h3>于是有了三种帧</h3>
+ <table>
+  <tr><th>帧类型</th><th>参考谁</th><th>压缩率</th><th>在本工程中的实现</th></tr>
+  <tr><td><b>I 帧</b>（Intra）</td><td>只靠自己</td><td>最低</td><td><code>forwardDCT</code> 直接对整帧做 DCT 量化</td></tr>
+  <tr><td><b>P 帧</b>（Predicted）</td><td>前面的已重建帧</td><td>中等</td><td><code>compensatedFrame.m</code>：先运动补偿，再编码残差</td></tr>
+  <tr><td><b>B 帧</b>（Bi-directional）</td><td>前、后参考帧</td><td>最高</td><td><code>bFrameProc.m</code>：本实现是<b>择一</b>单向参考</td></tr>
+ </table>
+
+ <div class="box note"><span class="t">为什么 I 帧不能省</span>
+ 如果所有帧都靠前一帧预测，误差会一直传递下去，而且没法从视频中间开始播放。每隔若干帧放一个 I 帧，等于定期「重新对表」；这一组帧就叫 <b>GOP（Group of Pictures）</b>。
+ </div>
+
+ <h3>一个必须记住的数字</h3>
+ <p>本工程把帧统一缩放到 <b>128×128</b>，宏块边长 <code>mbSize=8</code>，所以一帧被切成 <b>16×16 = 256</b> 个块。这正是 <code>main44.m:9</code> 里 <code>motionVect = zeros(2,256)</code> 的由来：每个块存一个二维运动矢量。后面所有循环都按「步长 8」扫描这 256 个块。</p>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="c2">
+ <h2><span class="num">2</span>全局鸟瞰：一条流水线</h2>
+ <p class="goal">阅读本章后，你应能对着图说出每个主要函数的调用顺序。</p>
+ <p class="lead"><code>main44.m</code> 是唯一的入口脚本。它先处理第 1 帧（I 帧），然后进入 <code>for i=1:10:60</code> 循环，每个循环体处理一个 10 帧 GOP；循环末尾把该 GOP 的最后一帧设为下一组的起始 I 帧。</p>
+
+ <figure class="fig">
+  <svg viewBox="0 0 900 372" role="img" aria-label="main44 总处理流水线">
+   <rect x="18" y="20" width="128" height="52" rx="8" fill="#e8f0fb" stroke="#2c5aa0" stroke-width="2"/>
+   <text x="82" y="42" text-anchor="middle" font-size="13" font-weight="700" fill="#24406e">news.avi</text>
+   <text x="82" y="60" text-anchor="middle" font-size="11" fill="#5c6779">aviread / frame2im</text>
+   <line x1="148" y1="46" x2="188" y2="46" stroke="#2c5aa0" stroke-width="2" marker-end="url(#arB)"/>
+   <rect x="192" y="20" width="132" height="52" rx="8" fill="#e8f0fb" stroke="#2c5aa0" stroke-width="2"/>
+   <text x="258" y="42" text-anchor="middle" font-size="13" font-weight="700" fill="#24406e">缩放 128×128</text>
+   <text x="258" y="60" text-anchor="middle" font-size="11" fill="#5c6779">imresize / double</text>
+   <line x1="326" y1="46" x2="366" y2="46" stroke="#2c5aa0" stroke-width="2" marker-end="url(#arB)"/>
+   <rect x="370" y="20" width="140" height="52" rx="8" fill="#e8f0fb" stroke="#2c5aa0" stroke-width="2"/>
+   <text x="440" y="42" text-anchor="middle" font-size="13" font-weight="700" fill="#24406e">GOP.m 取 9 帧</text>
+   <text x="440" y="60" text-anchor="middle" font-size="11" fill="#5c6779">IBBPBBPBB + I</text>
+
+   <text x="18" y="106" font-size="13" font-weight="700" fill="#33445e">按帧类型分三条支路</text>
+   <rect x="18" y="118" width="200" height="58" rx="8" fill="#e7f5ee" stroke="#2f8f6b" stroke-width="2"/>
+   <text x="118" y="140" text-anchor="middle" font-size="13" font-weight="700" fill="#206a4e">I 帧：DCT + 量化</text>
+   <text x="118" y="160" text-anchor="middle" font-size="11" fill="#5c6779">forwardDCT(Im, array)</text>
+   <rect x="18" y="188" width="200" height="58" rx="8" fill="#fdf0e4" stroke="#d9772f" stroke-width="2"/>
+   <text x="118" y="210" text-anchor="middle" font-size="13" font-weight="700" fill="#a4541c">P 帧：TSS → MC</text>
+   <text x="118" y="230" text-anchor="middle" font-size="11" fill="#5c6779">compensatedFrame.m</text>
+   <rect x="18" y="258" width="200" height="58" rx="8" fill="#fdf0e4" stroke="#d9772f" stroke-width="2"/>
+   <text x="118" y="280" text-anchor="middle" font-size="13" font-weight="700" fill="#a4541c">B 帧：双参考择一</text>
+   <text x="118" y="300" text-anchor="middle" font-size="11" fill="#5c6779">bFrameProc.m → bFrameCal</text>
+
+   <path d="M220 147 L268 147 L268 190 L300 190" fill="none" stroke="#2f8f6b" stroke-width="2" marker-end="url(#arG)"/>
+   <path d="M220 217 L300 217" fill="none" stroke="#d9772f" stroke-width="2" marker-end="url(#arO)"/>
+   <path d="M220 287 L268 287 L268 232 L300 232" fill="none" stroke="#d9772f" stroke-width="2" marker-end="url(#arO)"/>
+
+   <rect x="304" y="166" width="172" height="84" rx="8" fill="#fff" stroke="#2c5aa0" stroke-width="2"/>
+   <text x="390" y="192" text-anchor="middle" font-size="13" font-weight="700" fill="#24406e">残差 → DCT → 量化</text>
+   <text x="390" y="212" text-anchor="middle" font-size="12" fill="#5c6779">得到量化系数 JQ</text>
+   <text x="390" y="234" text-anchor="middle" font-size="11" fill="#bb4b48">（内存中，不是码流）</text>
+
+   <line x1="480" y1="208" x2="520" y2="208" stroke="#2c5aa0" stroke-width="2" marker-end="url(#arB)"/>
+   <rect x="524" y="166" width="164" height="84" rx="8" fill="#e8f0fb" stroke="#2c5aa0" stroke-width="2"/>
+   <text x="606" y="192" text-anchor="middle" font-size="13" font-weight="700" fill="#24406e">decoder.m 分派</text>
+   <text x="606" y="212" text-anchor="middle" font-size="11" fill="#5c6779">identifier 1…10 + flag</text>
+   <text x="606" y="233" text-anchor="middle" font-size="11" fill="#5c6779">I/p/bDecoder → inverseDCT</text>
+
+   <line x1="692" y1="208" x2="732" y2="208" stroke="#2f8f6b" stroke-width="2" marker-end="url(#arG)"/>
+   <rect x="736" y="166" width="146" height="84" rx="8" fill="#e7f5ee" stroke="#2f8f6b" stroke-width="2"/>
+   <text x="809" y="192" text-anchor="middle" font-size="13" font-weight="700" fill="#206a4e">重建帧 global *d</text>
+   <text x="809" y="212" text-anchor="middle" font-size="11" fill="#5c6779">imshow / getframe</text>
+   <text x="809" y="233" text-anchor="middle" font-size="11" fill="#5c6779">addframe → 2.avi</text>
+
+   <path d="M606 252 L606 336 L118 336 L118 320" fill="none" stroke="#8a94a6" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arN)"/>
+   <text x="360" y="330" text-anchor="middle" font-size="12" fill="#6b7486">本地重建帧 buffer* 回馈为下一帧的参考（见第 8 章）</text>
+  </svg>
+  <figcaption>图 2-1　<code>main44.m</code> 的三条支路与闭环反馈。灰色虚线是初学者最容易忽略、却最关键的一根线。</figcaption>
+ </figure>
+
+ <div class="step"><div class="b">1</div><div class="c"><b>准备</b>：<span class="path">main44.m:7-30</span> 创建输出 AVI、读入 <code>Qtable2.txt</code> 量化表、设置 <code>mbSize=8</code> / <code>p=7</code>、声明 10 个 <code>global</code> 变量。</div></div>
+ <div class="step"><div class="b">2</div><div class="c"><b>首个 I 帧</b>：<span class="path">main44.m:30-42</span> 读第 1 帧 → <code>forwardDCT</code> → <code>inverseDCT</code> 得到本地重建 <code>bufferI1</code> → <code>decoder(…，1，…)</code>。</div></div>
+ <div class="step"><div class="b">3</div><div class="c"><b>循环 6 个 GOP</b>：<span class="path">main44.m:44-222</span> 每个 GOP 由 <code>GOP(j)</code> 取 9 帧，按 <code>P4 → B2/B3 → P7 → B5/B6 → I10 → B8/B9</code> 的<b>编码顺序</b>处理。</div></div>
+ <div class="step"><div class="b">4</div><div class="c"><b>显示与写盘</b>：<span class="path">main44.m:141-225</span> 把 10 个 <code>global *d</code> 逐帧 <code>imshow</code> + <code>getframe</code> 写入 <code>2.avi</code>。</div></div>
+
+ <div class="box pit"><span class="t">注意「编码顺序 ≠ 显示顺序」</span>
+ 要先有后面的 P 帧才能编它前面的 B 帧，所以代码里先算 <code>P4</code>、再算 <code>B2/B3</code>，最后才按显示顺序 1…10 播放。第 3 章会把这条时间线画开。
+ </div>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="c3">
+ <h2><span class="num">3</span>GOP 与三种帧的排布</h2>
+ <p class="goal">阅读本章后，你应能解释为什么 B 帧必须「先编后播」。</p>
+ <p>本工程固定使用 10 帧 GOP，结构写在 <code>main44.m:20</code> 的注释里：<code>IBBPBBPBBI</code>。<code>GOP.m</code> 一次从 AVI 读出 9 帧（<code>i+1 … i+9</code>），加上上一组留下的第 1 帧，凑成 10 帧。</p>
+
+ <figure class="fig">
+  <svg viewBox="0 0 900 268" role="img" aria-label="10 帧 GOP 时间轴与参考关系">
+   <text x="20" y="24" font-size="13" font-weight="700" fill="#33445e">显示顺序（播放顺序）</text>
+   <g font-size="13" text-anchor="middle">
+    <g><rect x="30" y="36" width="72" height="40" rx="6" fill="#dbe9cf" stroke="#2f8f6b" stroke-width="2"/><text x="66" y="62" font-weight="700" fill="#206a4e">I1</text></g>
+    <g><rect x="112" y="36" width="72" height="40" rx="6" fill="#fbe4cf" stroke="#d9772f" stroke-width="2"/><text x="148" y="62" fill="#a4541c">B2</text></g>
+    <g><rect x="194" y="36" width="72" height="40" rx="6" fill="#fbe4cf" stroke="#d9772f" stroke-width="2"/><text x="230" y="62" fill="#a4541c">B3</text></g>
+    <g><rect x="276" y="36" width="72" height="40" rx="6" fill="#dce8f8" stroke="#2c5aa0" stroke-width="2"/><text x="312" y="62" font-weight="700" fill="#24406e">P4</text></g>
+    <g><rect x="358" y="36" width="72" height="40" rx="6" fill="#fbe4cf" stroke="#d9772f" stroke-width="2"/><text x="394" y="62" fill="#a4541c">B5</text></g>
+    <g><rect x="440" y="36" width="72" height="40" rx="6" fill="#fbe4cf" stroke="#d9772f" stroke-width="2"/><text x="476" y="62" fill="#a4541c">B6</text></g>
+    <g><rect x="522" y="36" width="72" height="40" rx="6" fill="#dce8f8" stroke="#2c5aa0" stroke-width="2"/><text x="558" y="62" font-weight="700" fill="#24406e">P7</text></g>
+    <g><rect x="604" y="36" width="72" height="40" rx="6" fill="#fbe4cf" stroke="#d9772f" stroke-width="2"/><text x="640" y="62" fill="#a4541c">B8</text></g>
+    <g><rect x="686" y="36" width="72" height="40" rx="6" fill="#fbe4cf" stroke="#d9772f" stroke-width="2"/><text x="722" y="62" fill="#a4541c">B9</text></g>
+    <g><rect x="768" y="36" width="72" height="40" rx="6" fill="#dbe9cf" stroke="#2f8f6b" stroke-width="2"/><text x="804" y="62" font-weight="700" fill="#206a4e">I10</text></g>
+   </g>
+   <text x="30" y="100" font-size="11" fill="#5c6779">第 1 组起点</text>
+   <text x="768" y="100" font-size="11" fill="#5c6779">下一组起点</text>
+
+   <path d="M66 78 Q66 128 148 78" fill="none" stroke="#2f8f6b" stroke-width="1.6" marker-end="url(#arG)"/>
+   <path d="M66 78 Q66 148 230 78" fill="none" stroke="#2f8f6b" stroke-width="1.6" marker-end="url(#arG)"/>
+   <path d="M66 78 Q66 118 312 78" fill="none" stroke="#2c5aa0" stroke-width="1.8" marker-end="url(#arB)"/>
+   <path d="M312 78 Q312 128 394 78" fill="none" stroke="#d9772f" stroke-width="1.6" marker-end="url(#arO)"/>
+   <path d="M312 78 Q312 148 476 78" fill="none" stroke="#d9772f" stroke-width="1.6" marker-end="url(#arO)"/>
+   <path d="M312 78 Q389 168 558 78" fill="none" stroke="#2c5aa0" stroke-width="1.8" marker-end="url(#arB)"/>
+   <path d="M558 78 Q558 128 640 78" fill="none" stroke="#d9772f" stroke-width="1.6" marker-end="url(#arO)"/>
+   <path d="M558 78 Q558 148 722 78" fill="none" stroke="#d9772f" stroke-width="1.6" marker-end="url(#arO)"/>
+   <path d="M558 78 Q681 168 804 78" fill="none" stroke="#2f8f6b" stroke-width="1.6" marker-end="url(#arG)"/>
+   <text x="450" y="182" text-anchor="middle" font-size="12" fill="#5c6779">弧线 = 参考关系；B 帧在本实现中只取其中一条（见第 7 章）</text>
+
+   <rect x="30" y="202" width="810" height="46" rx="8" fill="#f7f9fc" stroke="#dfe5ee"/>
+   <text x="44" y="222" font-size="12.5" font-weight="700" fill="#33445e">编码顺序：</text>
+   <text x="126" y="222" font-size="12.5" fill="#24406e">I1 → P4 → B2 → B3 → P7 → B5 → B6 → I10 → B8 → B9</text>
+   <text x="44" y="240" font-size="11.5" fill="#bb4b48">必须先得到后面的 P/I 参考帧，才能编它前面的 B 帧；但播放时仍按 1…10 显示。</text>
+  </svg>
+  <figcaption>图 3-1　<code>IBBPBBPBBI</code> 的显示顺序、参考弧线与编码顺序。</figcaption>
+ </figure>
+
+ <h3>GOP 之间怎么接上</h3>
+ <p>循环末尾 <code>main44.m:220-222</code> 执行 <code>I1=I10; bufferI1=bufferI10; I1d=I10d</code>：把本组最后一帧（编号 10）当作下一组的第 1 帧。这也是为什么循环写成 <code>for i=1:10:60</code>，而 <code>GOP(j)</code> 里用 <code>j = i - round(i/10)</code> 做帧号偏移。</p>
+
+ <div class="box note"><span class="t">一个小练习</span>
+ 数一数：<code>main44.m:44</code> 的循环跑 6 次，每次读 <code>i+1 … i+9</code>，最大读到第几帧？答案是 <b>55</b>（不是 60）。读入的 <code>noframe = aviinfo('news.avi').NumFrames</code> 实际上完全没被用到。这类「写了但没用」的变量，在这个教学工程里不少，读到时不必困惑。
+ </div>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="c4">
+ <h2><span class="num">4</span>I 帧：DCT、量化与 ZigZag</h2>
+ <p class="goal">阅读本章后，你应能解释「为什么量化后会出现大量零」。</p>
+ <p>I 帧不参考任何别的帧，只能压缩自己。做法是把图像切成 8×8 小块，逐块变换到频域，再把不重要的高频系数抹掉。</p>
+
+ <figure class="fig">
+  <svg viewBox="0 0 900 296" role="img" aria-label="DCT 量化与 ZigZag 扫描">
+   <text x="20" y="20" font-size="13" font-weight="700" fill="#33445e">① 8×8 像素块（Im − 128）</text>
+   <g transform="translate(20,32)">
+    <rect x="0" y="0" width="144" height="144" fill="#eef3fa" stroke="#9db4d4"/>
+    <g stroke="#c8d6e8" stroke-width="1">
+     <path d="M18 0V144 M36 0V144 M54 0V144 M72 0V144 M90 0V144 M108 0V144 M126 0V144"/>
+     <path d="M0 18H144 M0 36H144 M0 54H144 M0 72H144 M0 90H144 M0 108H144 M0 126H144"/>
+    </g>
+    <rect x="0" y="0" width="18" height="18" fill="#2c5aa0" opacity=".55"/>
+    <text x="72" y="166" text-anchor="middle" font-size="11.5" fill="#5c6779">空间域：相邻像素很接近</text>
+   </g>
+   <line x1="172" y1="104" x2="216" y2="104" stroke="#2c5aa0" stroke-width="2" marker-end="url(#arB)"/>
+   <text x="194" y="94" text-anchor="middle" font-size="11" fill="#2c5aa0">DCT</text>
+
+   <text x="230" y="20" font-size="13" font-weight="700" fill="#33445e">② 频域系数：能量集中在左上</text>
+   <g transform="translate(230,32)">
+    <rect x="0" y="0" width="144" height="144" fill="#fff" stroke="#9db4d4"/>
+    <rect x="0" y="0" width="18" height="18" fill="#2c5aa0"/>
+    <rect x="18" y="0" width="18" height="18" fill="#4b75b5"/>
+    <rect x="0" y="18" width="18" height="18" fill="#4b75b5"/>
+    <rect x="36" y="0" width="18" height="18" fill="#7a9bcf"/>
+    <rect x="18" y="18" width="18" height="18" fill="#7a9bcf"/>
+    <rect x="0" y="36" width="18" height="18" fill="#7a9bcf"/>
+    <rect x="126" y="126" width="18" height="18" fill="#e8eef7"/>
+    <text x="9" y="13" font-size="8" fill="#fff">DC</text>
+    <text x="72" y="166" text-anchor="middle" font-size="11.5" fill="#5c6779">左上低频 / 右下高频</text>
+   </g>
+   <line x1="382" y1="104" x2="426" y2="104" stroke="#d9772f" stroke-width="2" marker-end="url(#arO)"/>
+   <text x="404" y="94" text-anchor="middle" font-size="11" fill="#d9772f">÷ Q</text>
+
+   <text x="440" y="20" font-size="13" font-weight="700" fill="#33445e">③ 量化表 Qtable2.txt（示意）</text>
+   <g transform="translate(440,32)" font-size="11" text-anchor="middle">
+    <rect x="0" y="0" width="144" height="144" fill="#fdf0e4" stroke="#d9772f"/>
+    <g stroke="#eccaa9" stroke-width="1">
+     <path d="M18 0V144 M36 0V144 M54 0V144 M72 0V144 M90 0V144 M108 0V144 M126 0V144"/>
+     <path d="M0 18H144 M0 36H144 M0 54H144 M0 72H144 M0 90H144 M0 108H144 M0 126H144"/>
+    </g>
+    <text x="9" y="13" fill="#a4541c">16</text><text x="27" y="13" fill="#a4541c">11</text>
+    <text x="135" y="139" fill="#a4541c">131</text>
+    <text x="72" y="166" text-anchor="middle" font-size="11.5" fill="#5c6779">右下数值大 → 高频除得更狠</text>
+   </g>
+   <line x1="592" y1="104" x2="636" y2="104" stroke="#2f8f6b" stroke-width="2" marker-end="url(#arG)"/>
+
+   <text x="650" y="20" font-size="13" font-weight="700" fill="#33445e">④ JQ：大量零</text>
+   <g transform="translate(650,32)" font-size="10" text-anchor="middle">
+    <rect x="0" y="0" width="144" height="144" fill="#e7f5ee" stroke="#2f8f6b"/>
+    <g stroke="#c5e2d4" stroke-width="1">
+     <path d="M18 0V144 M36 0V144 M54 0V144 M72 0V144 M90 0V144 M108 0V144 M126 0V144"/>
+     <path d="M0 18H144 M0 36H144 M0 54H144 M0 72H144 M0 90H144 M0 108H144 M0 126H144"/>
+    </g>
+    <text x="9" y="13" fill="#206a4e">42</text><text x="27" y="13" fill="#206a4e">−7</text><text x="9" y="31" fill="#206a4e">5</text>
+    <text x="72" y="166" text-anchor="middle" font-size="11.5" fill="#5c6779">这就是「编码结果」</text>
+   </g>
+
+   <g transform="translate(20,222)">
+    <text x="0" y="0" font-size="12.5" font-weight="700" fill="#33445e">⑤ ZigZag 扫描：把二维零串成一维</text>
+    <g transform="translate(360,-16)" stroke="#8a94a6" stroke-width="1" fill="none">
+     <rect x="0" y="0" width="64" height="64" fill="#fff"/>
+     <path d="M8 0V64 M16 0V64 M24 0V64 M32 0V64 M40 0V64 M48 0V64 M56 0V64"/>
+     <path d="M0 8H64 M0 16H64 M0 24H64 M0 32H64 M0 40H64 M0 48H64 M0 56H64"/>
+     <path d="M4 4 H12 L4 12 H20 L4 20 H28 L4 28 H36 L4 36 H44 L4 44 H52 L4 52 H60" stroke="#d9772f" stroke-width="2"/>
+    </g>
+    <text x="190" y="14" font-size="12" fill="#5c6779">低频在前、高频在后 → 末尾一长串 0</text>
+    <text x="190" y="34" font-size="12" fill="#bb4b48">本工程的 ZigZag.m 写好了，但没有接进主流程</text>
+   </g>
+  </svg>
+  <figcaption>图 4-1　从像素块到量化系数的四步，以及 ZigZag 的扫描方向。</figcaption>
+ </figure>
+
+ <h3>对应到代码</h3>
+ <p><code>forwardDCT.m</code> 只有 5 行有效代码：</p>
+ <pre><code>Im = Im - 128;                              % 把 0..255 平移到以 0 为中心
+T  = dctmtx(8);                            % 8×8 DCT 变换矩阵
+y  = blkproc(Im,[8 8],'P1*x*P2',T,T');    % 逐块做 T·x·T'
+JQ = blkproc(y,[8 8],'round(x ./ P1)',array);  % 逐元素除以量化表并取整</code></pre>
+ <p><code>inverseDCT.m</code> 是对称的：先 <code>.*array</code> 反量化，再 <code>T'·x·T</code> 反变换，最后 <code>+128</code> 平移回来。量化是有损的、不可逆的一步：<b>除完取整，小数部分永远丢了</b>，所以解码图不可能和原图完全相同。</p>
+
+ <div class="box note"><span class="t">用具体数字建立直觉</span>
+ 量化表左上角是 <b>16</b>，右下角是 <b>131</b>（见 <code>Qtable2.txt</code>）。假设某个高频 DCT 系数是 40，除以 131 再取整得 <b>0</b>；解码时 0×131 还是 0，这个细节就永久消失了。而左上角的 DC 系数除以 16，保留得相对完整。这就是「保留轮廓、丢掉纹理」的量化策略。<br>
+ B 帧用 <code>0.5*array</code>（量化步长减半），因此 B 帧残差保留得更精细——因为 B 帧要被压得更狠，作者用更细的量化来补偿质量。
+ </div>
+
+ <div class="box tip"><span class="t">为什么是 128</span>
+ 像素值原本是 0…255（无符号），DCT 希望输入围绕 0 波动。减 128 后，大片均匀区域接近 0，变换后非零系数更少。解码端 <code>+128</code> 再还原。第 7 章会看到 B 帧分支多减了一次 128，那是一个特殊 hack。
+ </div>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="c5">
+ <h2><span class="num">5</span>运动估计：在参考帧里找那一块</h2>
+ <p class="goal">阅读本章后，你应能说清 MV 是什么、MAD 是什么、TSS 为什么快。</p>
+ <p>运动估计要回答一个问题：<b>当前帧的这个 8×8 块，是从参考帧的哪个位置搬过来的？</b>答案是一个二维位移 <code>(dy, dx)</code>，即运动矢量 MV。</p>
+
+ <figure class="fig">
+  <svg viewBox="0 0 880 264" role="img" aria-label="块匹配运动估计示意">
+   <text x="20" y="22" font-size="13" font-weight="700" fill="#33445e">当前帧</text>
+   <rect x="20" y="34" width="170" height="170" fill="#eef3fa" stroke="#9db4d4"/>
+   <rect x="76" y="90" width="44" height="44" fill="#d9772f" opacity=".85" stroke="#a4541c" stroke-width="2"/>
+   <text x="98" y="144" font-size="10" fill="#fff">8×8块</text>
+   <text x="105" y="224" text-anchor="middle" font-size="12" fill="#5c6779">要编码的当前块</text>
+
+   <text x="290" y="22" font-size="13" font-weight="700" fill="#33445e">参考帧（已重建的 buffer）</text>
+   <rect x="290" y="34" width="220" height="170" fill="#eef3fa" stroke="#9db4d4"/>
+   <rect x="330" y="56" width="140" height="126" fill="none" stroke="#2c5aa0" stroke-width="2" stroke-dasharray="5 4"/>
+   <text x="400" y="50" text-anchor="middle" font-size="11" fill="#2c5aa0">搜索窗 ±p（p=7 ⇒ 15×15 候选）</text>
+   <g fill="none" stroke="#b7c9e2"><rect x="352" y="78" width="44" height="44"/><rect x="396" y="78" width="44" height="44"/><rect x="352" y="122" width="44" height="44"/></g>
+   <rect x="396" y="122" width="44" height="44" fill="#2f8f6b" opacity=".8" stroke="#206a4e" stroke-width="2"/>
+   <text x="418" y="148" text-anchor="middle" font-size="10" fill="#fff">最佳</text>
+   <path d="M120 112 Q250 90 396 140" fill="none" stroke="#d9772f" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arO)"/>
+   <text x="255" y="94" text-anchor="middle" font-size="12" fill="#a4541c">MV = (dy, dx)</text>
+   <text x="400" y="224" text-anchor="middle" font-size="12" fill="#5c6779">逐候选算 MAD，取代价最小的位置</text>
+
+   <rect x="550" y="34" width="310" height="170" rx="8" fill="#f7f9fc" stroke="#dfe5ee"/>
+   <text x="566" y="58" font-size="13" font-weight="700" fill="#33445e">匹配准则 MAD</text>
+   <text x="566" y="84" font-size="13" fill="#24406e">MAD = (1 / 64) · Σ |当前块 − 候选块|</text>
+   <text x="566" y="108" font-size="12" fill="#5c6779">8×8 = 64 个像素，逐点取绝对差再平均</text>
+   <text x="566" y="132" font-size="12" fill="#5c6779">MAD 最小 ⇒ 两块最像 ⇒ 该位移即为 MV</text>
+   <text x="566" y="160" font-size="12" fill="#33445e">实现：costFuncMAD.m + minCost.m</text>
+   <text x="566" y="184" font-size="12" fill="#33445e">调用：motionEstTSS.m</text>
+  </svg>
+  <figcaption>图 5-1　块匹配：在参考帧的搜索窗里，用 MAD 找出最像当前块的位置。</figcaption>
+ </figure>
+
+ <h3>全搜索太慢，于是有了快速算法</h3>
+ <p>半径 <code>p=7</code> 时，全搜索（ES）要比较 <code>(2×7+1)² = 225</code> 个候选位置 × 256 个块 × 64 个像素。三步搜索（TSS）用「由粗到细」的 3×3 点阵，只需约 25 个候选点：</p>
+
+ <figure class="fig">
+  <svg viewBox="0 0 880 226" role="img" aria-label="三步搜索 TSS 的步长变化">
+   <text x="20" y="22" font-size="13" font-weight="700" fill="#33445e">TSS：每一步围绕上一步的最佳点，摆 3×3 共 9 个候选；步长逐次减半</text>
+   <g transform="translate(40,40)">
+    <text x="90" y="0" text-anchor="middle" font-size="12" font-weight="700" fill="#2c5aa0">第 1 步　步长 4</text>
+    <g stroke="#c8d6e8"><path d="M0 20H180 M0 60H180 M0 100H180 M60 20V100 M120 20V100 M90 10V110 M20 10V110 M160 10V110"/></g>
+    <g fill="#2c5aa0"><circle cx="30" cy="30" r="4"/><circle cx="90" cy="30" r="4"/><circle cx="150" cy="30" r="4"/><circle cx="30" cy="60" r="4"/><circle cx="90" cy="60" r="6" fill="#d9772f"/><circle cx="150" cy="60" r="4"/><circle cx="30" cy="90" r="4"/><circle cx="90" cy="90" r="4"/><circle cx="150" cy="90" r="4"/></g>
+    <text x="90" y="132" text-anchor="middle" font-size="11" fill="#5c6779">在 9 点中找 MAD 最小者</text>
+   </g>
+   <line x1="236" y1="100" x2="278" y2="100" stroke="#8a94a6" stroke-width="2" marker-end="url(#arN)"/>
+   <g transform="translate(292,40)">
+    <text x="90" y="0" text-anchor="middle" font-size="12" font-weight="700" fill="#2c5aa0">第 2 步　步长 2</text>
+    <g stroke="#c8d6e8"><path d="M0 20H180 M0 60H180 M0 100H180 M60 20V100 M120 20V100"/></g>
+    <g fill="#2c5aa0"><circle cx="60" cy="30" r="4"/><circle cx="90" cy="30" r="4"/><circle cx="120" cy="30" r="4"/><circle cx="60" cy="60" r="4"/><circle cx="90" cy="60" r="6" fill="#d9772f"/><circle cx="120" cy="60" r="4"/><circle cx="60" cy="90" r="4"/><circle cx="90" cy="90" r="4"/><circle cx="120" cy="90" r="4"/></g>
+    <text x="90" y="132" text-anchor="middle" font-size="11" fill="#5c6779">围绕新的最佳点再摆 9 点</text>
+   </g>
+   <line x1="488" y1="100" x2="530" y2="100" stroke="#8a94a6" stroke-width="2" marker-end="url(#arN)"/>
+   <g transform="translate(544,40)">
+    <text x="90" y="0" text-anchor="middle" font-size="12" font-weight="700" fill="#2c5aa0">第 3 步　步长 1</text>
+    <g stroke="#c8d6e8"><path d="M0 20H180 M0 60H180 M0 100H180 M60 20V100 M120 20V100"/></g>
+    <g fill="#2c5aa0"><circle cx="75" cy="45" r="4"/><circle cx="90" cy="45" r="4"/><circle cx="105" cy="45" r="4"/><circle cx="75" cy="60" r="4"/><circle cx="90" cy="60" r="6" fill="#2f8f6b"/><circle cx="105" cy="60" r="4"/><circle cx="75" cy="75" r="4"/><circle cx="90" cy="75" r="4"/><circle cx="105" cy="75" r="4"/></g>
+    <text x="90" y="132" text-anchor="middle" font-size="11" fill="#5c6779">落点即最终 MV（整像素精度）</text>
+   </g>
+   <rect x="754" y="40" width="106" height="120" rx="8" fill="#f7f9fc" stroke="#dfe5ee"/>
+   <text x="807" y="66" text-anchor="middle" font-size="12" font-weight="700" fill="#33445e">代价对比</text>
+   <text x="807" y="90" text-anchor="middle" font-size="12" fill="#5c6779">ES：225 点</text>
+   <text x="807" y="114" text-anchor="middle" font-size="12" font-weight="700" fill="#2f8f6b">TSS：约 25 点</text>
+   <text x="807" y="140" text-anchor="middle" font-size="11" fill="#bb4b48">快，但可能陷局部最优</text>
+  </svg>
+  <figcaption>图 5-2　<code>motionEstTSS.m:28-29</code> 由 <code>p=7</code> 推出 <code>L=3</code>、<code>stepMax=4</code>，步长依次 4 → 2 → 1。</figcaption>
+ </figure>
+
+ <h3>工程里其实放了四族算法</h3>
+ <table>
+  <tr><th>算法</th><th>文件（P 帧 / B 帧）</th><th>思路</th><th>是否接入主流程</th></tr>
+  <tr><td>ES 全搜索</td><td><code>motionEstES.m</code> / <code>BmotionEstES.m</code></td><td>穷举搜索窗内每一点，最准最慢</td><td>否</td></tr>
+  <tr><td><b>TSS 三步搜索</b></td><td><code>motionEstTSS.m</code> / <code>BmotionEstTSS.m</code></td><td>3×3 点阵、步长减半</td><td><b>是</b>（<code>compensatedFrame.m:3</code>、<code>bFrameProc.m:4,7</code>）</td></tr>
+  <tr><td>DS 菱形搜索</td><td><code>motionEstDS.m</code> / <code>BmotionEstDS.m</code></td><td>大/小菱形模板交替</td><td>否</td></tr>
+  <tr><td>ARPS 自适应十字</td><td><code>motionEstARPS.m</code> / <code>BmotionEstARPS.m</code></td><td>用相邻块 MV 预测搜索起点</td><td>否</td></tr>
+ </table>
+ <div class="box tip"><span class="t">最好的入门实验</span>
+ 把 <code>compensatedFrame.m:3</code> 的 <code>motionEstTSS</code> 换成 <code>motionEstES</code>，对比 <code>2.avi</code> 的清晰度和运行时间。你会直观看到「搜索策略 → 预测质量 → 残差大小 → 重建质量」的因果链。这就是这个教学工程最有价值的用法。
+ </div>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="c6">
+ <h2><span class="num">6</span>运动补偿与残差：只编码「差多少」</h2>
+ <p class="goal">阅读本章后，你应能画出 P 帧编码的加减法关系。</p>
+ <p>有了 MV，就可以从参考帧把对应块搬过来拼成<b>预测图</b> <code>imgComp</code>（<code>motionComp.m</code>），再用当前帧减去预测图得到<b>残差</b>。残差大部分接近 0，交给 DCT/量化后系数更稀疏，这就是压缩的来源。</p>
+
+ <figure class="fig">
+  <svg viewBox="0 0 880 212" role="img" aria-label="P 帧残差与重建的加减法">
+   <g><rect x="16" y="34" width="120" height="120" rx="6" fill="#eef3fa" stroke="#9db4d4"/>
+    <circle cx="76" cy="94" r="26" fill="#8fb0d8"/>
+    <text x="76" y="176" text-anchor="middle" font-size="12" fill="#33445e">当前帧 Im</text></g>
+   <text x="152" y="100" text-anchor="middle" font-size="26" fill="#5c6779">−</text>
+   <g><rect x="170" y="34" width="120" height="120" rx="6" fill="#fdf0e4" stroke="#d9772f"/>
+    <circle cx="222" cy="94" r="26" fill="#e0a36c"/>
+    <text x="230" y="176" text-anchor="middle" font-size="12" fill="#33445e">预测图 imgComp</text>
+    <text x="230" y="192" text-anchor="middle" font-size="10.5" fill="#5c6779">motionComp(参考帧, MV, 8)</text></g>
+   <text x="306" y="100" text-anchor="middle" font-size="26" fill="#5c6779">=</text>
+   <g><rect x="324" y="34" width="120" height="120" rx="6" fill="#e7f5ee" stroke="#2f8f6b"/>
+    <circle cx="384" cy="94" r="26" fill="none" stroke="#2f8f6b" stroke-width="2" stroke-dasharray="4 3"/>
+    <text x="384" y="98" text-anchor="middle" font-size="11" fill="#2f8f6b">接近全 0</text>
+    <text x="384" y="176" text-anchor="middle" font-size="12" fill="#33445e">残差 imageSubtract</text></g>
+   <line x1="452" y1="94" x2="492" y2="94" stroke="#2c5aa0" stroke-width="2" marker-end="url(#arB)"/>
+   <rect x="496" y="58" width="132" height="72" rx="8" fill="#e8f0fb" stroke="#2c5aa0" stroke-width="2"/>
+   <text x="562" y="86" text-anchor="middle" font-size="13" font-weight="700" fill="#24406e">DCT + 量化</text>
+   <text x="562" y="108" text-anchor="middle" font-size="12" fill="#5c6779">得到 JQ</text>
+   <line x1="632" y1="94" x2="668" y2="94" stroke="#2f8f6b" stroke-width="2" marker-end="url(#arG)"/>
+   <rect x="672" y="44" width="188" height="100" rx="8" fill="#f7f9fc" stroke="#2f8f6b" stroke-width="2"/>
+   <text x="766" y="70" text-anchor="middle" font-size="13" font-weight="700" fill="#206a4e">重建 buffer</text>
+   <text x="766" y="94" text-anchor="middle" font-size="11.5" fill="#33445e">inverseDCT(JQ) + imgComp</text>
+   <text x="766" y="116" text-anchor="middle" font-size="11.5" fill="#33445e">= 下一帧的参考帧</text>
+   <text x="766" y="136" text-anchor="middle" font-size="11" fill="#bb4b48">注意：加回的是「预测图」</text>
+  </svg>
+  <figcaption>图 6-1　P 帧编码的加减法。整个 <code>compensatedFrame.m</code> 就是这张图的代码化。</figcaption>
+ </figure>
+
+ <pre><code>motionVect  = motionEstTSS(Im, bufferImage, mbSize, p);   % ① 找 MV
+imgComp     = motionComp(bufferImage, motionVect, mbSize); % ② 拼预测图
+imageSubtract = double(imsubtract(uint8(Im), uint8(imgComp))); % ③ 相减
+streamP     = forwardDCT(imageSubtract, array);            % ④ 变换量化
+JQ2         = inverseDCT(streamP, array);                  % ⑤ 本地解码
+bufferImageP = double(imadd(JQ2, imgComp));                % ⑥ 重建参考帧</code></pre>
+
+ <div class="box pit"><span class="t">容易看漏的一步</span>
+ 第 ⑤⑥ 步看起来「多此一举」：既然刚编码完，为什么立刻又解码一遍？因为<b>解码端拿不到原始帧</b>，它只能看到经过量化损失的重建图。编码器必须用同一张失真的图当参考，才能保证两边预测一致。详见第 8 章。
+ </div>
+ <div class="box note"><span class="t">P 帧与 B 帧的数值差异</span>
+ P 帧残差没有减 128（<code>compensatedFrame.m:5</code>），而 B 帧在 <code>compensatedFrameB.m:6-7</code> 里额外 <code>imsubtract(…,128)</code>，解码端 <code>bdecoder.m:6</code> 再 <code>+128</code> 补回。这是原始教学代码留下的不对称 hack，不是标准规定，阅读时按「作者为了配合 imsubtract 的 uint8 截断做的数值平移」理解即可。
+ </div>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="c7">
+ <h2><span class="num">7</span>B 帧：借前一帧，还是借后一帧</h2>
+ <p class="goal">阅读本章后，你应能说清 <code>flag</code> 变量的含义。</p>
+ <p>标准 MPEG 的 B 帧可以取前、后参考的<b>平均</b>。本工程做了简化：分别做两次运动估计，然后<b>挑一个</b>参考帧，用 <code>flag</code> 告诉解码器挑的是哪一个。</p>
+
+ <figure class="fig">
+  <svg viewBox="0 0 880 246" role="img" aria-label="B 帧参考选择">
+   <rect x="20" y="60" width="150" height="66" rx="8" fill="#e7f5ee" stroke="#2f8f6b" stroke-width="2"/>
+   <text x="95" y="88" text-anchor="middle" font-size="14" font-weight="700" fill="#206a4e">前参考 I1</text>
+   <text x="95" y="108" text-anchor="middle" font-size="11" fill="#5c6779">bufferI1</text>
+   <rect x="365" y="60" width="150" height="66" rx="8" fill="#fdf0e4" stroke="#d9772f" stroke-width="2"/>
+   <text x="440" y="88" text-anchor="middle" font-size="14" font-weight="700" fill="#a4541c">B 帧</text>
+   <text x="440" y="108" text-anchor="middle" font-size="11" fill="#5c6779">当前要编码</text>
+   <rect x="710" y="60" width="150" height="66" rx="8" fill="#e8f0fb" stroke="#2c5aa0" stroke-width="2"/>
+   <text x="785" y="88" text-anchor="middle" font-size="14" font-weight="700" fill="#24406e">后参考 P4</text>
+   <text x="785" y="108" text-anchor="middle" font-size="11" fill="#5c6779">bufferP4</text>
+
+   <path d="M440 60 Q280 10 95 60" fill="none" stroke="#8a94a6" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arN)"/>
+   <path d="M440 60 Q600 10 785 60" fill="none" stroke="#8a94a6" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arN)"/>
+   <text x="230" y="24" text-anchor="middle" font-size="12" fill="#5c6779">BmotionEstTSS(B, I) → 零 MV 个数 z1</text>
+   <text x="650" y="24" text-anchor="middle" font-size="12" fill="#5c6779">BmotionEstTSS(B, P) → 零 MV 个数 z2</text>
+
+   <rect x="330" y="160" width="220" height="52" rx="8" fill="#f7f9fc" stroke="#dfe5ee"/>
+   <text x="440" y="182" text-anchor="middle" font-size="13" font-weight="700" fill="#33445e">比较 z1 与 z2</text>
+   <text x="440" y="202" text-anchor="middle" font-size="12" fill="#5c6779">零 MV 多 ⇒ 该参考更「贴合」</text>
+   <path d="M330 186 L200 186 L200 132" fill="none" stroke="#2f8f6b" stroke-width="2.5" marker-end="url(#arG)"/>
+   <path d="M550 186 L680 186 L680 132" fill="none" stroke="#8a94a6" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arN)"/>
+   <text x="150" y="152" font-size="12" font-weight="700" fill="#2f8f6b">选中：flag = 0</text>
+   <text x="700" y="152" font-size="12" fill="#8a94a6">未选：flag = 1</text>
+   <text x="440" y="236" text-anchor="middle" font-size="12" fill="#bb4b48">这是启发式判决，不是率失真优化（RDO）</text>
+  </svg>
+  <figcaption>图 7-1　<code>bFrameProc.m:4-18</code> 的择一逻辑。零 MV 多意味着更多块「不用动」，预测更省。</figcaption>
+ </figure>
+
+ <pre><code>[motionVect1, zeroMatrixCount1] = BmotionEstTSS(B, I, mbSize, p);
+[motionVect2, zeroMatrixCount2] = BmotionEstTSS(B, P, mbSize, p);
+if zeroMatrixCount1 &lt;= zeroMatrixCount2
+    flag = 0;  B = bFrameCal(B, I, ...);   % 用前参考
+else
+    flag = 1;  B = bFrameCal(B, P, ...);   % 用后参考
+end</code></pre>
+
+ <p><code>flag</code> 随后被传进 <code>decoder.m</code>：<code>identifier</code> 决定帧类型（1=I1、2=B2、3=B3、4=P4 … 10=I10），<code>flag</code> 决定 B 帧取哪个参考（见 <code>decoder.m:195-204</code>）。这两个「魔法数」就是本工程解码器的全部调度信息。</p>
+
+ <div class="box warn"><span class="t">与标准的差别</span>
+ 标准 B 帧通常做<b>双向平均</b>（前、后各取一块再加权），而这里只取一侧。另外「零 MV 个数」只是启发式判据，没有计算码率与失真的权衡——真正的 RDO 会在相邻工程 <code>videoCodecDemo</code> 里出现，用 <code>J = D + λR</code> 做决策。这正是两个工程知识代际的分水岭。
+ </div>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="c8">
+ <h2><span class="num">8</span>解码器，以及初学者最容易困惑的「误差漂移」</h2>
+ <p class="goal">阅读本章后，你应能回答：编码器里为什么藏着一个解码器？</p>
+
+ <h3>解码器做了什么</h3>
+ <p><code>decoder.m</code> 用一个 <code>if identifier==…</code> 链做分派，三个薄封装 <code>Idecoder</code> / <code>pDecoder</code> / <code>bDecoder</code> 最终都走到 <code>deRunLength.m</code> → <code>inverseDCT.m</code>；P/B 帧再加回运动补偿图。结果不通过返回值传出，而是写进 10 个 <code>global</code> 变量（<code>I1d</code>、<code>P4d</code>、<code>B2d</code> …），由 <code>main44.m</code> 读取显示。</p>
+
+ <figure class="fig">
+  <svg viewBox="0 0 880 290" role="img" aria-label="编码器内嵌解码器的闭环">
+   <text x="20" y="22" font-size="13" font-weight="700" fill="#33445e">编码端</text>
+   <rect x="20" y="36" width="128" height="52" rx="8" fill="#e8f0fb" stroke="#2c5aa0" stroke-width="2"/>
+   <text x="84" y="58" text-anchor="middle" font-size="13" font-weight="700" fill="#24406e">原始帧 Xn</text>
+   <text x="84" y="76" text-anchor="middle" font-size="11" fill="#5c6779">当前输入</text>
+   <line x1="150" y1="62" x2="190" y2="62" stroke="#2c5aa0" stroke-width="2" marker-end="url(#arB)"/>
+   <rect x="194" y="36" width="130" height="52" rx="8" fill="#fff" stroke="#2c5aa0" stroke-width="2"/>
+   <text x="259" y="58" text-anchor="middle" font-size="13" font-weight="700" fill="#24406e">残差 → JQ</text>
+   <text x="259" y="76" text-anchor="middle" font-size="11" fill="#5c6779">forwardDCT</text>
+   <line x1="326" y1="62" x2="366" y2="62" stroke="#2c5aa0" stroke-width="2" marker-end="url(#arB)"/>
+   <rect x="370" y="36" width="140" height="52" rx="8" fill="#f7f9fc" stroke="#8a94a6" stroke-width="2" stroke-dasharray="5 4"/>
+   <text x="440" y="58" text-anchor="middle" font-size="13" font-weight="700" fill="#6b7486">量化损失</text>
+   <text x="440" y="76" text-anchor="middle" font-size="11" fill="#6b7486">信息永久丢失</text>
+
+   <line x1="440" y1="90" x2="440" y2="126" stroke="#2c5aa0" stroke-width="2" marker-end="url(#arB)"/>
+   <text x="560" y="116" font-size="12" fill="#5c6779">JQ 同时供两处使用</text>
+   <path d="M440 126 L200 126 L200 158" fill="none" stroke="#2f8f6b" stroke-width="2" marker-end="url(#arG)"/>
+   <path d="M440 126 L690 126 L690 158" fill="none" stroke="#d9772f" stroke-width="2" marker-end="url(#arO)"/>
+
+   <rect x="90" y="162" width="220" height="62" rx="8" fill="#e7f5ee" stroke="#2f8f6b" stroke-width="2"/>
+   <text x="200" y="184" text-anchor="middle" font-size="13" font-weight="700" fill="#206a4e">编码端本地重建 buffer*</text>
+   <text x="200" y="204" text-anchor="middle" font-size="11" fill="#5c6779">inverseDCT(JQ) + 预测图</text>
+   <text x="200" y="220" text-anchor="middle" font-size="11" fill="#5c6779">供下一帧做运动估计参考</text>
+
+   <rect x="578" y="162" width="220" height="62" rx="8" fill="#fdf0e4" stroke="#d9772f" stroke-width="2"/>
+   <text x="688" y="184" text-anchor="middle" font-size="13" font-weight="700" fill="#a4541c">解码端重建 *d</text>
+   <text x="688" y="204" text-anchor="middle" font-size="11" fill="#5c6779">decoder.m → global → imshow</text>
+   <text x="688" y="220" text-anchor="middle" font-size="11" fill="#5c6779">供观众看 / 写入 2.avi</text>
+
+   <path d="M200 226 L200 256 L688 256 L688 226" fill="none" stroke="#bb4b48" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arB)"/>
+   <text x="444" y="274" text-anchor="middle" font-size="12.5" font-weight="700" fill="#bb4b48">两者必须算出同一张图；若用「原始帧」当参考，误差会逐帧累积漂移</text>
+  </svg>
+  <figcaption>图 8-1　闭环预测：红虚线表示两端参考帧必须严格一致，这是所有混合编码器的通用结构。</figcaption>
+ </figure>
+
+ <h3>用一句话回答</h3>
+ <p class="lead">因为量化是有损的，解码端只能看到「重建后的、有点糊的」帧。如果编码器拿原始清晰帧去做运动估计，而解码器拿糊帧去补偿，两者的预测图就会不一致，误差一帧帧叠加，画面越往后越坏（<b>drift，误差漂移</b>）。所以编码器必须自己先走一遍解码流程，用和解码端完全相同的重建帧当参考。</p>
+
+ <div class="box pit"><span class="t">本工程的两处实现细节</span>
+ ① 编码端的重建是 <code>compensatedFrame.m</code> 里的 <code>bufferImageP</code>；② 解码端的重建是 <code>decoder.m</code> 里的 <code>global *d</code>。它们走了两条略有差异的代码路径（尤其 B 帧的 ±128 处理），这也是阅读代码时容易对不上的地方。
+ </div>
+ <div class="box note"><span class="t">PSNR 在哪</span>
+ <code>imgPSNR.m</code> 已经写好但没有接进主流程。想定量评估重建质量，可以在 <code>main44.m</code> 显示每帧时调用它，比较原始帧 <code>I1</code> 与重建帧 <code>I1d</code>。这也是一个很好的课后练习。
+ </div>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="c9">
+ <h2><span class="num">9</span>熵编码的空座位</h2>
+ <p class="goal">阅读本章后，你应能指出本工程缺了哪两块，以及它们为什么重要。</p>
+ <p>一条完整编码链路的最后两环是：<b>把量化系数变成一串紧凑的比特</b>（ZigZag + 游程 + 变长码）和<b>把比特写成码流</b>。本工程把位置留出来了，但没有坐满。</p>
+
+ <figure class="fig">
+  <svg viewBox="0 0 900 156" role="img" aria-label="完整链路与本工程实现范围">
+   <g font-size="12.5" text-anchor="middle">
+    <rect x="10" y="40" width="128" height="60" rx="8" fill="#e7f5ee" stroke="#2f8f6b" stroke-width="2"/>
+    <text x="74" y="66" font-weight="700" fill="#206a4e">预测 / 残差</text><text x="74" y="86" fill="#5c6779">已实现</text>
+    <rect x="150" y="40" width="128" height="60" rx="8" fill="#e7f5ee" stroke="#2f8f6b" stroke-width="2"/>
+    <text x="214" y="66" font-weight="700" fill="#206a4e">DCT / 量化</text><text x="214" y="86" fill="#5c6779">已实现</text>
+    <rect x="290" y="40" width="128" height="60" rx="8" fill="#e7f5ee" stroke="#2f8f6b" stroke-width="2"/>
+    <text x="354" y="66" font-weight="700" fill="#206a4e">反量化 / 重建</text><text x="354" y="86" fill="#5c6779">已实现</text>
+    <rect x="430" y="40" width="128" height="60" rx="8" fill="#f0f2f6" stroke="#8a94a6" stroke-width="2" stroke-dasharray="5 4"/>
+    <text x="494" y="66" font-weight="700" fill="#6b7486">ZigZag / 游程</text><text x="494" y="86" fill="#bb4b48">文件在，未调用</text>
+    <rect x="570" y="40" width="128" height="60" rx="8" fill="#f0f2f6" stroke="#8a94a6" stroke-width="2" stroke-dasharray="5 4"/>
+    <text x="634" y="66" font-weight="700" fill="#6b7486">Huffman 编码</text><text x="634" y="86" fill="#bb4b48">表在，未解析</text>
+    <rect x="710" y="40" width="128" height="60" rx="8" fill="#f0f2f6" stroke="#8a94a6" stroke-width="2" stroke-dasharray="5 4"/>
+    <text x="774" y="66" font-weight="700" fill="#6b7486">码流 / 码控</text><text x="774" y="86" fill="#bb4b48">完全缺失</text>
+   </g>
+   <g stroke="#8a94a6" stroke-width="1.6" marker-end="url(#arN)">
+    <line x1="140" y1="70" x2="148" y2="70"/><line x1="280" y1="70" x2="288" y2="70"/>
+    <line x1="420" y1="70" x2="428" y2="70"/><line x1="560" y1="70" x2="568" y2="70"/>
+    <line x1="700" y1="70" x2="708" y2="70"/>
+   </g>
+   <text x="450" y="132" text-anchor="middle" font-size="13" font-weight="700" fill="#33445e">蓝色实线 = 本工程跑通的部分；灰色虚线 = 留白，也正是最好的课程设计作业</text>
+  </svg>
+  <figcaption>图 9-1　实现范围对照。<code>ZigZag.m</code>、<code>chkcategory.m</code>、<code>makeLayers.m</code>、<code>deRunLength.m</code> 都属于「留白」。</figcaption>
+ </figure>
+
+ <table>
+  <tr><th>留白的文件</th><th>原本应该做什么</th><th>实际状态</th></tr>
+  <tr><td><code>ZigZag.m</code> / <code>dezigzag.m</code></td><td>把 8×8 系数按之字形排成一维，让零集中在末尾</td><td>实现了索引表，但无调用点</td></tr>
+  <tr><td><code>chkcategory.m</code></td><td>按 VLC 的 category 解析系数幅值</td><td>实现了，但无调用点（且用了旧版 <code>bitcmp</code> 语法）</td></tr>
+  <tr><td><code>makeLayers.m</code> / <code>deRunLength.m</code></td><td>分层 / 反游程解码</td><td>前者是恒等函数 <code>c=c</code>，后者只转调 <code>inverseDCT</code></td></tr>
+  <tr><td><code>decoder.m:6-162</code> 的 MatAC / MatDC</td><td>MPEG 标准 AC/DC 系数 Huffman 表</td><td>定义在，向下层层传参，从未被查表</td></tr>
+ </table>
+
+ <div class="box tip"><span class="t">为什么留白反而是好事</span>
+ 对初学者来说，一个「只到量化系数为止」的工程恰好把最核心、最可视化的部分单独拎了出来，不会被位流语法淹没。补全它，就是一份完整的课程设计：<br>
+ ① 对 <code>JQ</code> 做 ZigZag 扫描；② 统计 (run, level) 游程对；③ 用 MatAC/MatDC 查表写成比特；④ 写一个 <code>.bit</code> 文件；⑤ 解码端反向还原并计算 PSNR；⑥ 换成 ES 搜索、调整量化表，画出「码率—PSNR」曲线。
+ </div>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="c10">
+ <h2><span class="num">10</span>知识地图与自测</h2>
+ <p class="goal">用下面的卡片回顾，再用自测题检验。</p>
+ <div class="kmap">
+  <div class="kcard"><b>时间冗余 → 帧间预测</b><span>第 1、5、6 章｜MV、MAD、TSS、残差</span></div>
+  <div class="kcard"><b>空间冗余 → 变换编码</b><span>第 4 章｜DCT、量化表、ZigZag</span></div>
+  <div class="kcard"><b>帧类型与调度</b><span>第 3、7 章｜GOP、I/P/B、编码顺序、flag</span></div>
+  <div class="kcard"><b>闭环预测</b><span>第 8 章｜本地重建、误差漂移</span></div>
+  <div class="kcard"><b>熵编码与码流</b><span>第 9 章｜本工程留白，标准链路的最后一环</span></div>
+  <div class="kcard"><b>质量评价</b><span>第 8 章｜PSNR（imgPSNR.m，未接线）</span></div>
+ </div>
+
+ <h3>自测题（点击展开答案）</h3>
+ <details><summary>1. 一帧 128×128、mbSize=8，为什么 motionVect 是 2×256？</summary><p>128/8 = 16，每方向 16 个块，共 16×16 = 256 个宏块；每个块需要一个二维 MV（dy、dx），所以是 2 行 256 列。见 <code>main44.m:9</code> 与 <code>motionEstTSS.m:20</code>。</p></details>
+ <details><summary>2. 量化表右下角的数值为什么比左上角大？</summary><p>右下对应高频细节，人眼不敏感，除以更大的数后取整直接变 0，从而省下大量系数；左上低频（含 DC）决定整体亮度与轮廓，需要精细保留。见第 4 章与 <code>Qtable2.txt</code>。</p></details>
+ <details><summary>3. 为什么编码 P4 之前，代码已经有一张 bufferI1？</summary><p>因为 I1 编码后立刻本地解码了一次，得到与解码端一致的重建帧。P 帧的运动估计必须对着这张重建帧做，而不是对着原始 I1 做，否则会误差漂移。见第 8 章。</p></details>
+ <details><summary>4. 为什么代码先算 P4 再算 B2、B3？</summary><p>B 帧要用「后面的」P4 作参考，必须等 P4 的重建帧就绪才能编码；但播放仍按显示顺序 1…10。这是编码顺序与显示顺序的分离。见第 3 章。</p></details>
+ <details><summary>5. 本工程算不算「生成了压缩视频文件」？为什么？</summary><p>不算。<code>2.avi</code> 是<b>重建帧序列</b>（无压缩 AVI），不是压缩码流；量化系数 <code>JQ</code> 只存在于内存，Huffman 表从未被查用，没有写出任何比特流。见第 0、9 章。</p></details>
+ <details><summary>6. 把量化表整体乘 2，画面和系数会怎么变？</summary><p>除数变大 → 更多系数被量化成 0 → 反量化后细节丢失更多，重建图更模糊，PSNR 下降；但系数更稀疏，若接上熵编码会得到更短的码流。这正是「质量—码率」权衡的雏形。</p></details>
+ <details><summary>7. 本工程的 B 帧与标准 MPEG 的 B 帧有什么不同？</summary><p>标准常用前、后参考的双向加权平均；本工程用「零 MV 个数」启发式择一参考（<code>flag=0/1</code>），不做双向插值，也不做率失真判决。见第 7 章。</p></details>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="c11">
+ <h2><span class="num">11</span>动手运行与常见报错</h2>
+ <p class="goal">阅读本章后，你应能独立把 demo 跑起来，并知道报错时先查哪里。</p>
+ <pre><code>cd('…/mpeg-matlab')   % 必须：所有数据文件都是相对路径
+main44                % 脚本开头 clear all 会清空当前工作区</code></pre>
+ <p>预期现象：弹出图像窗口逐帧显示重建帧，命令行打印 GOP 编号与耗时 <code>toc</code>，结束时当前目录多出 <code>2.avi</code>。</p>
+ <table>
+  <tr><th>现象</th><th>原因</th><th>处理</th></tr>
+  <tr><td><code>未定义函数 aviread / avifile</code></td><td>MATLAB 新版已移除旧 AVI API</td><td>改用 <code>VideoReader</code> / <code>VideoWriter</code>，或装旧版 MATLAB（约 R2010b 之前）</td></tr>
+  <tr><td><code>未定义函数 dctmtx / blkproc / imresize</code></td><td>缺少 Image Processing Toolbox</td><td>安装该工具箱；<code>blkproc</code> 新版需换 <code>blockproc</code></td></tr>
+  <tr><td>找不到 <code>news.avi</code> 或 <code>Qtable2.txt</code></td><td>当前工作目录不是本工程根目录</td><td><code>cd</code> 到本目录（代码里没有 <code>addpath</code>，光加路径不够）</td></tr>
+  <tr><td>Linux 下提示找不到 <code>pDecoder</code> / <code>bDecoder</code></td><td>文件名 <code>pdecoder.m</code> 与内部声明名大小写不一致</td><td>统一大小写；Windows 因文件系统不区分大小写才「侥幸」能跑</td></tr>
+  <tr><td>矩阵下标越界</td><td>改了帧尺寸却没同步 <code>motionVect=zeros(2,256)</code> 与 <code>inverseDCT</code> 里写死的 <code>1:8:256</code></td><td>帧尺寸保持 128×128，或把写死的 256 / 8 全部参数化</td></tr>
+  <tr><td>运行后工作区变量全没了</td><td><code>main44.m:2</code> 的 <code>clear all</code></td><td>在独立会话中运行，或注释掉该行</td></tr>
+ </table>
+ <div class="box tip"><span class="t">推荐的三组对比实验</span>
+ ① 固定量化表，把 TSS 换成 ES，比较画质与耗时；② 固定搜索算法，把量化表整体乘 2 / 除以 2，用 <code>imgPSNR</code> 定量对比；③ 修改 <code>for i=1:10:60</code> 处理更多 GOP，观察 GOP 衔接处的重建质量。每做完一组，回看第 6、8 章的图，把现象与链路对应起来。
+ </div>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="c12">
+ <h2><span class="num">12</span>与相邻工程的分工：为什么要保持独立</h2>
+ <p>工作区里还有 <code>../videoCodecDemo</code>。它和本工程讲的是<b>同一门课的不同章节</b>：</p>
+ <table>
+  <tr><th>对比项</th><th>本工程 mpeg-matlab</th><th>videoCodecDemo</th></tr>
+  <tr><td>知识定位</td><td>经典标准链路的<b>简化骨架</b>（教学）</td><td>现代率失真优化的<b>完整研究实现</b>（2004 博士研究）</td></tr>
+  <tr><td>残差怎么编</td><td>8×8 DCT + 固定量化表</td><td>Matching Pursuits 稀疏原子字典，不用 DCT</td></tr>
+  <tr><td>熵编码</td><td>Huffman 表在，未接线；无码流</td><td>Range Coding，输出真实 <code>.enc</code> 码流</td></tr>
+  <tr><td>决策方式</td><td>零 MV 启发式、固定 QP</td><td><code>J = D + λR</code> 率失真判决 + λ 码控</td></tr>
+  <tr><td>运动估计</td><td>整像素、固定 8×8 块、四族快速搜索</td><td>整/半/四分之一像素、可变块划分、OBMC</td></tr>
+  <tr><td>输入输出</td><td>AVI 进、AVI 出</td><td>YUV 4:2:0 单帧进、<code>.enc</code> + RD 曲线出</td></tr>
+ </table>
+ <p><b>因此不合并。</b>两者不是同一系统的上下游模块，而是同一知识领域的两个平行实现：数据格式、码流、残差表示、运动估计接口完全异构，无法互相调用；强行拼在一起既不能补全本工程的熵编码，也不能给对方提供 DCT 模块。此外对方工程中的 <code>@uint32</code> / <code>@uint8</code> 类方法重载会改变整个 MATLAB 会话的整数运算语义，与本工程的 <code>uint8</code> 图像运算同跑会产生静默错误。</p>
+ <div class="box note"><span class="t">推荐的学习顺序</span>
+ 先通过本工程把「预测 → 残差 → 变换 → 量化 → 闭环重建」这条主干彻底弄懂（第 1～8 章），再去看 <a href="../videoCodecDemo/tutorial.html">../videoCodecDemo/tutorial.html</a>，重点体会三个升级：<b>从固定块到可变块、从启发式到 RDO、从系数矩阵到真实码流</b>。这样过渡最省力。
+ </div>
+</section>
+
+<!-- ============ 13 ============ -->
+<section id="c13">
+ <h2><span class="num">13</span>附录：函数速查表</h2>
+ <table>
+  <tr><th>文件</th><th>输入输出要点</th><th>对应章节</th></tr>
+  <tr><td><code>main44.m</code></td><td>脚本，无参数；读 <code>news.avi</code>，写 <code>2.avi</code></td><td>2、11</td></tr>
+  <tr><td><code>GOP.m</code></td><td><code>GOP(i)</code> → 9 帧 128×128 double</td><td>3</td></tr>
+  <tr><td><code>forwardDCT.m</code> / <code>inverseDCT.m</code></td><td><code>(Im, array) → JQ</code> / <code>(JQ, array) → m</code></td><td>4</td></tr>
+  <tr><td><code>motionEstTSS.m</code> / <code>BmotionEstTSS.m</code></td><td><code>(当前帧, 参考帧, mbSize, p) → MV[, 零MV数]</code></td><td>5、7</td></tr>
+  <tr><td><code>costFuncMAD.m</code> / <code>minCost.m</code></td><td>MAD 代价与最小代价选择</td><td>5</td></tr>
+  <tr><td><code>motionComp.m</code> / <code>MC.m</code></td><td><code>(参考帧, MV, mbSize) → 预测图</code></td><td>6</td></tr>
+  <tr><td><code>compensatedFrame.m</code> / <code>compensatedFrameB.m</code></td><td>P / B 帧「MV→补偿→残差→JQ→重建」全流程</td><td>6、7</td></tr>
+  <tr><td><code>bFrameProc.m</code> / <code>bFrameCal.m</code></td><td>比较零 MV 个数，返回 <code>flag</code></td><td>7</td></tr>
+  <tr><td><code>decoder.m</code> / <code>Idecoder.m</code> / <code>pdecoder.m</code> / <code>bdecoder.m</code></td><td>按 <code>identifier</code> + <code>flag</code> 分派，结果写 <code>global *d</code></td><td>8</td></tr>
+  <tr><td><code>deRunLength.m</code> / <code>makeLayers.m</code></td><td>占位：仅转调 / 恒等</td><td>9</td></tr>
+  <tr><td><code>ZigZag.m</code> / <code>dezigzag.m</code> / <code>chkcategory.m</code></td><td>未接入的熵编码骨架</td><td>9</td></tr>
+  <tr><td><code>imgPSNR.m</code></td><td>PSNR 评价（未接线，可用于实验）</td><td>8、11</td></tr>
+  <tr><td><code>Qtable2.txt</code></td><td>8×8 亮度量化表，被 <code>main44.m</code> 与 <code>decoder.m</code> 各读一次</td><td>4</td></tr>
+ </table>
+ <p style="margin-top:18px;color:var(--muted);font-size:14px">本页为新增教学文档，未改动任何原有代码与数据。术语与行号依据当前目录中的源文件；若你调整了参数，请同步更新自己的笔记。</p>
+</section>
+
+<footer>mpeg-matlab · 图解入门教程　|　配套 README.md　|　单文件离线 HTML，内嵌 SVG 图示</footer>
+</main>
+</div>
+</body>
+</html>
